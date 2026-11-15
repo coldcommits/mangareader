@@ -1,6 +1,7 @@
 # mangareader
 
 A userscript that spreads manga pages into a full spread for a more native reading experience. Does not download, copy or change any images.
+**SO FAR ONLY WORKS ON ONE WEBSITE, FUTURE SUPPORT COMING SOON**
 
 ## Install
 

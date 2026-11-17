@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MangaReader
 // @namespace    frosty.spread
-// @version      2.0
+// @version      2.1
 // @description  Two-page spreader for manga sites that has chapter pages as a column of images
 // @match        *://*/*
 // @downloadURL  https://raw.githubusercontent.com/coldcommits/mangareader/main/universal-spread.user.js
@@ -42,7 +42,7 @@
 
   // Chapter URLs /chapter-52/, /ch-12/, /chap_3, /c/12
   const CHAPTER_URL = /(chapter|chap|ch|episode|ep)[-_/ ]?\d+|\/c\/\d+/i;
-  const JUNK = /logo|avatar|banner|icon|sprite|emoji|gravatar|ads?[\/_-]|button|thumb|cover-small/i;
+  const JUNK = /logo|avatar|banner|icon|sprite|emoji|gravatar|(^|[\/_.-])ads?[\/_.-]|button|thumb|cover-small/i;
   const MIN_PAGES = 3;
 
   const cfg = SITES[location.hostname.replace(/^www\./, '')] || {};
@@ -110,7 +110,7 @@
       if (a && a.href) return a;
     }
     return [...document.querySelectorAll('a[href]')]
-      .find((a) => /^\s*next(\s+chapter)?\s*[»>›→]?\s*$/i.test(a.textContent)) || null;
+      .find((a) => /^\s*next(\s+chapter)?\s*[»>›→]?\s*$|^\s*continue\b/i.test(a.textContent)) || null;
   }
 
   // Make spread based off grouping

@@ -40,6 +40,7 @@
     "a[rel=next]",
     "a.ch-next-btn",
     "a.next_page",
+    "a.previous_page",
     ".nav-next a",
     "a.next",
     "a.btn-next",
@@ -206,6 +207,13 @@
     const next = findNext();
     if (!next) return;
     sessionStorage.setItem("tps-auto", "1"); // reopen reader next page
+    location.href = next.href;
+  }
+
+  function goPreviousChapter() {
+    const next = findNext();
+    if (!next) return;
+    sessionStorage.setItem("tps-auto", "1");
     location.href = next.href;
   }
 

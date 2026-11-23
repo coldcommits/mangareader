@@ -25,7 +25,8 @@ A userscript that spreads manga pages into a full spread for a more native readi
 | `C` | Toggle whether the cover is shown alone or paired with page 2 |
 | `Esc` | Close reader |
 
-After  last spread, the next forward turn follows the page's "Next" link to the next chapter. **may be broken depending on how the website is organized**
+After  last spread, the next forward turn follows the page's "Next" link to the next chapter. Same thing for the previous chapter. 
+**may be broken depending on how the website is organized**
 
 ## Pairing
 

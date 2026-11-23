@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MangaReader
 // @namespace    frosty.spread
-// @version      2.3
+// @version      2.4
 // @description  Two-page spreader for manga sites that has chapter pages as a column of images
 // @match        *://*/*
 // @downloadURL  https://raw.githubusercontent.com/coldcommits/mangareader/main/universal-spread.user.js
@@ -268,7 +268,12 @@
     render();
   }
 
-  const HANDLED = ["Escape", "ArrowLeft", "ArrowRight", " ", "r", "c"];
+  const HANDLED = ["Escape", "ArrowLeft", "ArrowRight", " ", "r", "c", "f"];
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen();
+  }
   const KEY_EVENTS = ["keydown", "keyup", "keypress"];
 
   function onKey(e) {
@@ -288,10 +293,13 @@
     } else if (k === "c") {
       state.coverAlone = !state.coverAlone;
       rebuild(true);
+    } else if (k === "f") {
+      toggleFullscreen();
     }
   }
 
   function close() {
+    if (document.fullscreenElement) document.exitFullscreen();
     state.overlay.remove();
     state.overlay = null;
     document.documentElement.style.overflow = "";
@@ -327,8 +335,9 @@
         </div>
         <div class="tps-bar">
           <span class="tps-info"></span>
-          <span>&larr;/&rarr; or click sides: turn | R: flip direction | C: cover alone | Esc: close</span>
-          <button class="tps-x" style="margin-left:auto">Close</button>
+          <span>&larr;/&rarr; or click sides: turn | R: flip direction | C: cover alone | F: fullscreen | Esc: close</span>
+          <button class="tps-fs" style="margin-left:auto">Fullscreen</button>
+          <button class="tps-x">Close</button>
         </div>
       </div>`;
     o.querySelector(".tps-prevch").onclick = goPreviousChapter;
@@ -336,6 +345,7 @@
     state.overlay = o;
     document.documentElement.style.overflow = "hidden";
     o.querySelector(".tps-x").onclick = close;
+    o.querySelector(".tps-fs").onclick = toggleFullscreen;
     o.querySelector(".tps-nextch").onclick = goNextChapter;
     o.querySelectorAll(".tps-hit").forEach((h) => {
       h.onclick = () => {

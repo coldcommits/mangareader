@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MangaReader
 // @namespace    frosty.spread
-// @version      2.2
+// @version      2.3
 // @description  Two-page spreader for manga sites that has chapter pages as a column of images
 // @match        *://*/*
 // @downloadURL  https://raw.githubusercontent.com/coldcommits/mangareader/main/universal-spread.user.js
@@ -40,10 +40,18 @@
     "a[rel=next]",
     "a.ch-next-btn",
     "a.next_page",
-    "a.previous_page",
     ".nav-next a",
     "a.next",
     "a.btn-next",
+  ];
+
+  const PREV_SELECTORS = [
+    "a[rel=prev]",
+    "a.ch-prev-btn",
+    "a.prev_page",
+    ".nav-previous a",
+    "a.prev",
+    "a.btn-prev",
   ];
 
   // Chapter URLs /chapter-52/, /ch-12/, /chap_3, /c/12
@@ -146,6 +154,19 @@
     );
   }
 
+  function findPrev() {
+    const sels = cfg.prev ? [cfg.prev, ...PREV_SELECTORS] : PREV_SELECTORS;
+    for (const s of sels) {
+      const a = document.querySelector(s);
+      if (a && a.href) return a;
+    }
+    return (
+      [...document.querySelectorAll("a[href]")].find((a) =>
+        /^\s*[«<‹←]?\s*prev(ious)?(\s+chapter)?\s*$/i.test(a.textContent),
+      ) || null
+    );
+  }
+
   // Make spread based off grouping
   function buildSpreads(sizes) {
     const out = [];
@@ -201,25 +222,31 @@
     const isLast = state.idx === state.spreads.length - 1;
     o.querySelector(".tps-nextch").style.display =
       isLast && findNext() ? "block" : "none";
+
+    o.querySelector(".tps-prevch").style.display =
+      state.idx === 0 && findPrev() ? "block" : "none";
   }
 
   function goNextChapter() {
     const next = findNext();
     if (!next) return;
-    sessionStorage.setItem("tps-auto", "1"); // reopen reader next page
+    sessionStorage.setItem("tps-auto", "start"); // reopen reader next page
     location.href = next.href;
   }
 
   function goPreviousChapter() {
-    const next = findNext();
-    if (!next) return;
-    sessionStorage.setItem("tps-auto", "1");
-    location.href = next.href;
+    const prev = findPrev();
+    if (!prev) return;
+    sessionStorage.setItem("tps-auto", "end");
+    location.href = prev.href;
   }
 
   function go(d) {
     const n = state.idx + d;
-    if (n < 0) return;
+    if (n < 0) {
+      goPreviousChapter();
+      return;
+    }
     if (n >= state.spreads.length) {
       goNextChapter();
       return;
@@ -271,7 +298,7 @@
     KEY_EVENTS.forEach((t) => window.removeEventListener(t, onKey, true));
   }
 
-  async function open() {
+  async function open(atEnd = false) {
     state.pages = collectPages();
     if (state.pages.length < 2) {
       alert("Could not find chapter images on this page.");
@@ -287,20 +314,24 @@
         .tps-bar{padding:6px 12px;background:#000;display:flex;gap:16px;align-items:center}
         .tps-bar button{background:#333;color:#ddd;border:0;padding:3px 10px;border-radius:4px;cursor:pointer}
         .tps-hit{position:absolute;top:0;bottom:30px;width:35%;cursor:pointer}
-        .tps-nextch{position:absolute;bottom:50px;left:50%;transform:translateX(-50%);z-index:2;display:none;
-  padding:10px 20px;background:#c0392b;color:#fff;border:0;border-radius:6px;font:600 15px system-ui;cursor:pointer}
+        .tps-chnav{position:absolute;bottom:50px;left:50%;transform:translateX(-50%);z-index:2;display:flex;gap:12px}
+        .tps-chnav button{display:none;padding:10px 20px;background:#c0392b;color:#fff;border:0;border-radius:6px;font:600 15px system-ui;cursor:pointer;white-space:nowrap}
       </style>
       <div class="tps">
         <div class="tps-stage"></div>
         <div class="tps-hit" style="left:0" data-side="l"></div>
         <div class="tps-hit" style="right:0" data-side="r"></div>
-        <button class="tps-nextch">Next chapter &rarr;</button>
+        <div class="tps-chnav">
+          <button class="tps-prevch">&larr; Previous chapter</button>
+          <button class="tps-nextch">Next chapter &rarr;</button>
+        </div>
         <div class="tps-bar">
           <span class="tps-info"></span>
           <span>&larr;/&rarr; or click sides: turn | R: flip direction | C: cover alone | Esc: close</span>
           <button class="tps-x" style="margin-left:auto">Close</button>
         </div>
       </div>`;
+    o.querySelector(".tps-prevch").onclick = goPreviousChapter;
     document.body.appendChild(o);
     state.overlay = o;
     document.documentElement.style.overflow = "hidden";
@@ -315,6 +346,10 @@
     KEY_EVENTS.forEach((t) => window.addEventListener(t, onKey, true));
     state.idx = 0;
     await rebuild(false);
+    if (atEnd) {
+      state.idx = state.spreads.length - 1;
+      render();
+    }
   }
 
   // Launch reader
@@ -328,11 +363,12 @@
     button.style.cssText =
       "position:fixed;right:16px;bottom:16px;z-index:2147483646;padding:8px 14px;" +
       "background:#c0392b;color:#fff;border:0;border-radius:6px;cursor:pointer;font:600 14px system-ui";
-    button.onclick = open;
+    button.onclick = () => open();
     document.body.appendChild(button);
-    if (sessionStorage.getItem("tps-auto")) {
+    const auto = sessionStorage.getItem("tps-auto");
+    if (auto) {
       sessionStorage.removeItem("tps-auto");
-      open();
+      open(auto === "end");
     }
   }
 

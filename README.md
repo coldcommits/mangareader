@@ -24,8 +24,9 @@ A userscript that spreads manga pages into a full spread for a more native readi
 | `R` | Switch between right-to-left (manga) and left-to-right |
 | `C` | Toggle whether the cover is shown alone or paired with page 2 |
 | `Esc` | Close reader |
+| `F` | Toggle fullscreen |
 
-After  last spread, the next forward turn follows the page's "Next" link to the next chapter. Same thing for the previous chapter. 
+After  last spread, the next forward turn follows the page's "Next" link to the next chapter. Same thing for the previous chapter. It doesn't actually change the URL to the next chapter when you move past the last page. It fetches the images and loads it in the reader so you stay in fullscreen. When you exit the reader, then the next URL will load.
 **may be broken depending on how the website is organized**
 
 ## Pairing

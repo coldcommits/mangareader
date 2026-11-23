@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MangaReader
 // @namespace    frosty.spread
-// @version      2.4
+// @version      3.0
 // @description  Two-page spreader for manga sites that has chapter pages as a column of images
 // @match        *://*/*
 // @downloadURL  https://raw.githubusercontent.com/coldcommits/mangareader/main/universal-spread.user.js
@@ -68,6 +68,8 @@
     coverAlone: true,
     overlay: null,
     spreads: [],
+    doc: document,
+    loading: false,
   };
 
   // image finder
@@ -95,15 +97,13 @@
 
   const dedupe = (urls) => [...new Set(urls)];
 
-  function fromSelector(sel) {
-    return dedupe(
-      [...document.querySelectorAll(sel)].filter(usable).map(imgUrl),
-    );
+  function fromSelector(sel, root = document) {
+    return dedupe([...root.querySelectorAll(sel)].filter(usable).map(imgUrl));
   }
 
-  function fromKnownContainers() {
+  function fromKnownContainers(root = document) {
     for (const c of KNOWN_CONTAINERS) {
-      for (const el of document.querySelectorAll(c)) {
+      for (const el of root.querySelectorAll(c)) {
         const urls = dedupe(
           [...el.querySelectorAll("img")].filter(usable).map(imgUrl),
         );
@@ -114,15 +114,11 @@
   }
 
   // Group image with nearest neighbor
-  function fromClusters() {
+  function fromClusters(root = document) {
     const groups = new Map();
-    for (const img of [...document.querySelectorAll("img")].filter(usable)) {
+    for (const img of [...root.querySelectorAll("img")].filter(usable)) {
       let el = img.parentElement;
-      while (
-        el &&
-        el !== document.body &&
-        el.querySelectorAll("img").length < 2
-      )
+      while (el && el !== root.body && el.querySelectorAll("img").length < 2)
         el = el.parentElement;
       if (!el) continue;
       if (!groups.has(el)) groups.set(el, []);
@@ -133,20 +129,20 @@
     return dedupe(best.map(imgUrl));
   }
 
-  function collectPages() {
-    if (cfg.images) return fromSelector(cfg.images);
-    const known = fromKnownContainers();
-    return known.length ? known : fromClusters();
+  function collectPages(root = document) {
+    if (cfg.images) return fromSelector(cfg.images, root);
+    const known = fromKnownContainers(root);
+    return known.length ? known : fromClusters(root);
   }
 
-  function findNext() {
+  function findNext(root = document) {
     const sels = cfg.next ? [cfg.next, ...NEXT_SELECTORS] : NEXT_SELECTORS;
     for (const s of sels) {
-      const a = document.querySelector(s);
+      const a = root.querySelector(s);
       if (a && a.href) return a;
     }
     return (
-      [...document.querySelectorAll("a[href]")].find((a) =>
+      [...root.querySelectorAll("a[href]")].find((a) =>
         /^\s*next(\s+chapter)?\s*[»>›→]?\s*$|^\s*continue\b/i.test(
           a.textContent,
         ),
@@ -154,14 +150,14 @@
     );
   }
 
-  function findPrev() {
+  function findPrev(root = document) {
     const sels = cfg.prev ? [cfg.prev, ...PREV_SELECTORS] : PREV_SELECTORS;
     for (const s of sels) {
-      const a = document.querySelector(s);
+      const a = root.querySelector(s);
       if (a && a.href) return a;
     }
     return (
-      [...document.querySelectorAll("a[href]")].find((a) =>
+      [...root.querySelectorAll("a[href]")].find((a) =>
         /^\s*[«<‹←]?\s*prev(ious)?(\s+chapter)?\s*$/i.test(a.textContent),
       ) || null
     );
@@ -221,24 +217,53 @@
     });
     const isLast = state.idx === state.spreads.length - 1;
     o.querySelector(".tps-nextch").style.display =
-      isLast && findNext() ? "block" : "none";
+      isLast && findNext(state.doc) ? "block" : "none";
 
     o.querySelector(".tps-prevch").style.display =
-      state.idx === 0 && findPrev() ? "block" : "none";
+      state.idx === 0 && findPrev(state.doc) ? "block" : "none";
+  }
+
+  async function loadChapter(url, atEnd) {
+    if (state.loading) return;
+    state.loading = true;
+    try {
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error(res.status);
+      const doc = new DOMParser().parseFromString(
+        await res.text(),
+        "text/html",
+      );
+      const base = doc.createElement("base");
+      base.href = url;
+      doc.head.prepend(base);
+      const pages = collectPages(doc);
+      if (pages.length < MIN_PAGES) throw new Error("no pages");
+      state.doc = doc;
+      state.pages = pages;
+      history.pushState(null, "", url);
+      if (doc.title) document.title = doc.title;
+      state.idx = 0;
+      await rebuild(false);
+      if (atEnd) {
+        state.idx = state.spreads.length - 1;
+        render();
+      }
+    } catch {
+      sessionStorage.setItem("tps-auto", atEnd ? "end" : "start");
+      location.href = url;
+    } finally {
+      state.loading = false;
+    }
   }
 
   function goNextChapter() {
-    const next = findNext();
-    if (!next) return;
-    sessionStorage.setItem("tps-auto", "start"); // reopen reader next page
-    location.href = next.href;
+    const next = findNext(state.doc);
+    if (next) loadChapter(next.href, false);
   }
 
   function goPreviousChapter() {
-    const prev = findPrev();
-    if (!prev) return;
-    sessionStorage.setItem("tps-auto", "end");
-    location.href = prev.href;
+    const prev = findPrev(state.doc);
+    if (prev) loadChapter(prev.href, true);
   }
 
   function go(d) {
@@ -304,6 +329,7 @@
     state.overlay = null;
     document.documentElement.style.overflow = "";
     KEY_EVENTS.forEach((t) => window.removeEventListener(t, onKey, true));
+    if (state.doc !== document) location.reload();
   }
 
   async function open(atEnd = false) {
@@ -381,6 +407,10 @@
       open(auto === "end");
     }
   }
+
+  window.addEventListener("popstate", () => {
+    if (state.doc !== document) location.reload();
+  });
 
   maybeAddButton();
   [1000, 3000, 6000].forEach((t) => setTimeout(maybeAddButton, t));

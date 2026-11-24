@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MangaReader
 // @namespace    frosty.spread
-// @version      3.1
+// @version      3.2
 // @description  Two-page spreader for manga sites that has chapter pages as a column of images
 // @match        *://*/*
 // @downloadURL  https://raw.githubusercontent.com/coldcommits/mangareader/main/universal-spread.user.js
@@ -16,8 +16,8 @@
 
   // site config
   // site overrides if some don't work
-  //   images: CSS keyword for images
-  //   next:   CSS selector for next chapter link
+  // images: CSS keyword for images
+  // next:   CSS selector for next chapter link
   const SITES = {
     // 'example-reader.com': { images: '#reader img', next: '#reader-nav a.next' },
   };
@@ -211,6 +211,8 @@
       stage.appendChild(im);
     }
     o.querySelector(".tps-title").textContent = chapterTitle();
+    o.querySelector(".tps-prog-fill").style.width =
+      ((state.idx + 1) / state.spreads.length) * 100 + "%";
     o.querySelector(".tps-info").textContent =
       `${state.idx + 1}/${state.spreads.length}  |  ${state.rtl ? "RTL" : "LTR"}  |  cover ${state.coverAlone ? "alone" : "paired"}`;
     (state.spreads[state.idx + 1] || []).forEach((p) => {
@@ -299,6 +301,7 @@
   function chapterTitle() {
     const parts = location.pathname.split("/").filter(Boolean);
     let slug = parts.pop() || "";
+    if (/^index(\.\w+)?$/i.test(slug)) slug = parts.pop() || "";
     if (/^(chapter|chap|ch|episode|ep)[-_ ]?\d/i.test(slug) && parts.length)
       slug = parts.pop() + " " + slug;
     return decodeURIComponent(slug)
@@ -356,8 +359,13 @@
         .tps-stage{flex:1;min-height:0;display:flex;justify-content:center;align-items:center}
         .tps-stage img{max-height:100%;max-width:50%;object-fit:contain;display:block}
         .tps-stage img:only-child{max-width:100%}
-        .tps-bar{padding:6px 12px;background:#000;display:flex;gap:16px;align-items:center}
-        .tps-bar button{background:#333;color:#ddd;border:0;padding:3px 10px;border-radius:4px;cursor:pointer}
+        .tps-bar{position:relative;z-index:3;padding:6px 12px;background:#000;display:flex;gap:16px;align-items:center;line-height:1.4}
+        .tps-bar button{font:inherit;line-height:inherit;background:#333;color:#ddd;border:0;padding:3px 10px;border-radius:4px;cursor:pointer;flex-shrink:0}
+        .tps-left{display:flex;flex-direction:column;gap:4px;flex-shrink:0}
+        .tps-prog{width:140px;height:4px;background:#333;border-radius:2px;cursor:pointer}
+        .tps-prog-fill{height:100%;width:0;background:#c0392b;border-radius:2px}
+        .tps-help{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#888}
+        .tps-title{font-weight:600;color:#fff;white-space:nowrap;flex-shrink:0}
         .tps-hit{position:absolute;top:0;bottom:30px;width:35%;cursor:pointer}
         .tps-chnav{position:absolute;bottom:50px;left:50%;transform:translateX(-50%);z-index:2;display:flex;gap:12px}
         .tps-chnav button{display:none;padding:10px 20px;background:#c0392b;color:#fff;border:0;border-radius:6px;font:600 15px system-ui;cursor:pointer;white-space:nowrap}
@@ -371,9 +379,12 @@
           <button class="tps-nextch">Next chapter &rarr;</button>
         </div>
         <div class="tps-bar">
-          <span class="tps-info"></span>
-          <span>&larr;/&rarr; or click sides: turn | R: flip direction | C: cover alone | F: fullscreen | Esc: close</span>
-    <span class="tps-title" style="margin-left:auto;font-weight:600;color:#fff"></span>
+          <div class="tps-left">
+            <span class="tps-info"></span>
+            <div class="tps-prog"><div class="tps-prog-fill"></div></div>
+          </div>
+          <span class="tps-help">&larr;/&rarr; or click sides: turn | R: flip direction | C: cover alone | F: fullscreen | Esc: close</span>
+          <span class="tps-title"></span>
           <button class="tps-fs">Fullscreen</button>
           <button class="tps-x">Close</button>
         </div>
@@ -384,6 +395,15 @@
     document.documentElement.style.overflow = "hidden";
     o.querySelector(".tps-x").onclick = close;
     o.querySelector(".tps-fs").onclick = toggleFullscreen;
+    o.querySelector(".tps-prog").onclick = (e) => {
+      const r = e.currentTarget.getBoundingClientRect();
+      const frac = (e.clientX - r.left) / r.width;
+      state.idx = Math.min(
+        state.spreads.length - 1,
+        Math.max(0, Math.floor(frac * state.spreads.length)),
+      );
+      render();
+    };
     o.querySelector(".tps-nextch").onclick = goNextChapter;
     o.querySelectorAll(".tps-hit").forEach((h) => {
       h.onclick = () => {

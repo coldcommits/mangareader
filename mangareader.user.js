@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MangaReader
 // @namespace    frosty.spread
-// @version      3.0
+// @version      3.1
 // @description  Two-page spreader for manga sites that has chapter pages as a column of images
 // @match        *://*/*
 // @downloadURL  https://raw.githubusercontent.com/coldcommits/mangareader/main/universal-spread.user.js
@@ -210,6 +210,7 @@
       im.referrerPolicy = "no-referrer-when-downgrade";
       stage.appendChild(im);
     }
+    o.querySelector(".tps-title").textContent = chapterTitle();
     o.querySelector(".tps-info").textContent =
       `${state.idx + 1}/${state.spreads.length}  |  ${state.rtl ? "RTL" : "LTR"}  |  cover ${state.coverAlone ? "alone" : "paired"}`;
     (state.spreads[state.idx + 1] || []).forEach((p) => {
@@ -295,6 +296,16 @@
 
   const HANDLED = ["Escape", "ArrowLeft", "ArrowRight", " ", "r", "c", "f"];
 
+  function chapterTitle() {
+    const parts = location.pathname.split("/").filter(Boolean);
+    let slug = parts.pop() || "";
+    if (/^(chapter|chap|ch|episode|ep)[-_ ]?\d/i.test(slug) && parts.length)
+      slug = parts.pop() + " " + slug;
+    return decodeURIComponent(slug)
+      .replace(/\.\w+$/, "")
+      .replace(/[-_]+/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
   function toggleFullscreen() {
     if (document.fullscreenElement) document.exitFullscreen();
     else document.documentElement.requestFullscreen();
@@ -362,7 +373,8 @@
         <div class="tps-bar">
           <span class="tps-info"></span>
           <span>&larr;/&rarr; or click sides: turn | R: flip direction | C: cover alone | F: fullscreen | Esc: close</span>
-          <button class="tps-fs" style="margin-left:auto">Fullscreen</button>
+    <span class="tps-title" style="margin-left:auto;font-weight:600;color:#fff"></span>
+          <button class="tps-fs">Fullscreen</button>
           <button class="tps-x">Close</button>
         </div>
       </div>`;

@@ -4,8 +4,8 @@
 // @version      3.2
 // @description  Two-page spreader for manga sites that has chapter pages as a column of images
 // @match        *://*/*
-// @downloadURL  https://raw.githubusercontent.com/coldcommits/mangareader/main/universal-spread.user.js
-// @updateURL    https://raw.githubusercontent.com/coldcommits/mangareader/main/universal-spread.user.js
+// @downloadURL  https://raw.githubusercontent.com/coldcommits/mangareader/main/mangareader.user.js
+// @updateURL    https://raw.githubusercontent.com/coldcommits/mangareader/main/mangareader.user.js
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==
